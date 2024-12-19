@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import heapq
-# estructura de datos eficiente para gestionar colas de prioridad
 from estaciones import estaciones
 from conexiones import conexiones
 
@@ -11,10 +10,10 @@ G = nx.Graph()
 for estacion in estaciones:
     G.add_node(estacion)
 
-# Añadir conexiones (aristas), usando el valor booleano para saber si agregar la conexión
+# Añadir conexiones, usando el valor booleano para saber si agregar la conexión
 for conexion in conexiones:
     if conexion[2]:  # Solo agregar la conexión si existe (True)
-        G.add_edge(conexion[0], conexion[1], line=conexion[3])
+        G.add_edge(conexion[0], conexion[1], line=conexion[3], tiempo=conexion[4])
 
 # Función para encontrar la ruta óptima utilizando Dijkstra
 def encontrar_ruta_optima(grafo, inicio, destino):
@@ -35,7 +34,7 @@ def encontrar_ruta_optima(grafo, inicio, destino):
             return ruta
 
         for vecino in grafo[nodo_actual]:
-            peso = 1 
+            peso = grafo[nodo_actual][vecino]["tiempo"]
             distancia = distancia_actual + peso
             if distancia < distancias[vecino]:
                 distancias[vecino] = distancia
@@ -45,29 +44,13 @@ def encontrar_ruta_optima(grafo, inicio, destino):
     print(f"No hay ruta disponible de {inicio} a {destino}.")
     return None
 
-# Función para verificar las rutas bidireccionales
-# def verificar_rutas_bidireccionales(grafo):
-#     for u, v in grafo.edges():
-#         if not grafo.has_edge(v, u):  # Si no existe la ruta inversa
-#             print(f"Falta la ruta bidireccional entre {u} y {v}. X")
-#         else:
-#             print(f"Rutas bidireccionales entre {u} y {v} están correctamente definidas.")
-
-# # Verificar rutas bidireccionales
-# verificar_rutas_bidireccionales(G)
-
+# Normalizar nombres de estaciones
 def normalizar_cadena(cadena):
-    # Diccionario para reemplazar caracteres con tilde
     equivalencias = {
-        'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u',
-        'ü': 'u', 'ñ': 'n',
-        'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u',
-        'Ü': 'u', 'Ñ': 'n'
+        'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ñ': 'n',
+        'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u', 'Ñ': 'n'
     }
-    # Reemplazar caracteres con tilde
-    cadena_normalizada = ''.join(equivalencias.get(c, c) for c in cadena)
-    # Convertir a minúsculas y eliminar espacios
-    return ''.join(c for c in cadena_normalizada.lower() if c.isalnum())
+    return ''.join(equivalencias.get(c, c) for c in cadena).lower()
 
 # Crear un diccionario normalizado de estaciones
 estaciones_normalizadas = {normalizar_cadena(estacion): estacion for estacion in G.nodes}
@@ -89,8 +72,47 @@ while True:
         break
     print("Estación de destino no válida. Por favor, inténtelo de nuevo.")
 
+# Calcular el tiempo total del viaje, incluyendo transbordos
+def calcular_tiempo_total(ruta_optima):
+    tiempo_viaje = 0
+    transbordos = 0
+    tiempo_transbordos = 0
+    linea_anterior = None
+
+    for i in range(len(ruta_optima) - 1):
+        estacion_actual = ruta_optima[i]
+        estacion_siguiente = ruta_optima[i + 1]
+        linea_actual = G[estacion_actual][estacion_siguiente]["line"]
+
+        tiempo_viaje += G[estacion_actual][estacion_siguiente]["tiempo"]
+
+        # Si se realiza un transbordo (la línea cambia), se añaden 3 minutos
+        if linea_anterior and linea_anterior != linea_actual:
+            transbordos += 1
+            tiempo_transbordos += 3  # Añadir 3 minutos por transbordo
+
+        linea_anterior = linea_actual
+
+    return tiempo_viaje, transbordos, tiempo_transbordos
+
+# Mostrar información sobre el viaje
 print(f"El viajero va de {inicio} a {destino}")
 ruta_optima = encontrar_ruta_optima(G, inicio, destino)
+
+# Si hay ruta, calcular el tiempo total
+if ruta_optima:
+    tiempo_viaje, transbordos, tiempo_transbordos = calcular_tiempo_total(ruta_optima)
+    tiempo_total = tiempo_viaje + tiempo_transbordos
+
+print(f"Tiempo total de viaje: {tiempo_viaje} minutos.")
+if transbordos > 0:
+    if transbordos == 1:
+        print(f"Se ha realizado {transbordos} transbordo, añadiendo {tiempo_transbordos} minutos al tiempo total.")
+    else:
+        print(f"Se han realizado {transbordos} transbordos, añadiendo {tiempo_transbordos} minutos al tiempo total.")
+    print(f"Tiempo total (incluyendo transbordos): {tiempo_total} minutos.")
+else:
+    print(f"Tiempo total: {tiempo_total} minutos.")
 
 # Posiciones de las estaciones
 pos = {
@@ -147,6 +169,3 @@ if ruta_optima:
 
 plt.margins(0.1)
 plt.show()
-
-            # PARA CALCULAR DISTANCIAS, USA LOS VALORES DE POSICION (X,Y) Y ASI MEDIR LAS DISTANCIAS
-# DEBES COMPARAR ESAS DISTANCIAS CON LAS REALES, Y AÑADIR LA VARIABLE DE TIEMPO ENTRE LAS PARADAS DEPENDIENDO TMB DE LA LINEA
