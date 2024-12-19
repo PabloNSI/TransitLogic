@@ -1,5 +1,7 @@
 import matplotlib.pyplot as plt
 import networkx as nx
+import heapq
+# estructura de datos eficiente para gestionar colas de prioridad
 from estaciones import estaciones
 from conexiones import conexiones
 
@@ -16,13 +18,32 @@ for conexion in conexiones:
 
 # Función para encontrar la ruta óptima utilizando Dijkstra
 def encontrar_ruta_optima(grafo, inicio, destino):
-    try:
-        ruta = nx.shortest_path(grafo, source=inicio, target=destino)
-        print(f"Ruta óptima de {inicio} a {destino}: {ruta}")
-        return ruta
-    except nx.NetworkXNoPath:
-        print(f"No hay ruta disponible de {inicio} a {destino}.")
-        return None
+    distancias = {nodo: float('inf') for nodo in grafo}
+    distancias[inicio] = 0
+    previos = {nodo: None for nodo in grafo}
+    cola_prioridad = [(0, inicio)]
+
+    while cola_prioridad:
+        distancia_actual, nodo_actual = heapq.heappop(cola_prioridad)
+
+        if nodo_actual == destino:
+            ruta = []
+            while nodo_actual is not None:
+                ruta.insert(0, nodo_actual)
+                nodo_actual = previos[nodo_actual]
+            print(f"Ruta óptima de {inicio} a {destino}: {ruta}")
+            return ruta
+
+        for vecino in grafo[nodo_actual]:
+            peso = 1 
+            distancia = distancia_actual + peso
+            if distancia < distancias[vecino]:
+                distancias[vecino] = distancia
+                previos[vecino] = nodo_actual
+                heapq.heappush(cola_prioridad, (distancia, vecino))
+
+    print(f"No hay ruta disponible de {inicio} a {destino}.")
+    return None
 
 # Función para verificar las rutas bidireccionales
 # def verificar_rutas_bidireccionales(grafo):
@@ -111,7 +132,7 @@ line_colors = {
 }
 
 # Dibujar el grafo con las posiciones fijas
-edge_colors = [line_colors.get(G[u][v]['line'], 'black') for u, v in G.edges()]  # Usar el color de la línea
+edge_colors = [line_colors.get(G[u][v]['line'], 'black') for u, v in G.edges()] 
 plt.figure(figsize=(12, 12))
 
 # Usar las posiciones fijas para los nodos
