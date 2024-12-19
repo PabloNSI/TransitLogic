@@ -1,6 +1,5 @@
 Pseudocodigo del algoritmo Dijkstra:
 
-
 Algoritmo Dijkstra(Grafo G, Nodo inicio, Nodo destino):
 1. Inicializar el conjunto de nodos no visitados U con todos los nodos.
 2. Establecer la distancia de todos los nodos a infinito, excepto el nodo de inicio, que tendrá distancia 0.

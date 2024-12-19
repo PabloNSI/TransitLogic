@@ -6,22 +6,26 @@ from conexiones import conexiones
 
 G = nx.Graph()
 
-# Añadir estaciones (nodos)
+# Añadir estaciones (nodos) desde estaciones.py
 for estacion in estaciones:
     G.add_node(estacion)
 
 # Añadir conexiones, usando el valor booleano para saber si agregar la conexión
+# Desde conexiones.py
 for conexion in conexiones:
     if conexion[2]:  # Solo agregar la conexión si existe (True)
         G.add_edge(conexion[0], conexion[1], line=conexion[3], tiempo=conexion[4])
 
-# Función para encontrar la ruta óptima utilizando Dijkstra
+# Función para encontrar la ruta óptima utilizando Dijkstra, considerando transbordos
 def encontrar_ruta_optima(grafo, inicio, destino):
     distancias = {nodo: float('inf') for nodo in grafo}
     distancias[inicio] = 0
     previos = {nodo: None for nodo in grafo}
     cola_prioridad = [(0, inicio)]
-
+    
+    # Usar un diccionario para almacenar la línea de cada nodo visitado
+    lineas = {nodo: None for nodo in grafo}
+    
     while cola_prioridad:
         distancia_actual, nodo_actual = heapq.heappop(cola_prioridad)
 
@@ -35,10 +39,17 @@ def encontrar_ruta_optima(grafo, inicio, destino):
 
         for vecino in grafo[nodo_actual]:
             peso = grafo[nodo_actual][vecino]["tiempo"]
+            linea_actual = grafo[nodo_actual][vecino]["line"]
+            
+            # Si cambiamos de línea, agregar tiempo por transbordo
+            if lineas[nodo_actual] and lineas[nodo_actual] != linea_actual:
+                peso += 3  # Tiempo por transbordo
+
             distancia = distancia_actual + peso
             if distancia < distancias[vecino]:
                 distancias[vecino] = distancia
                 previos[vecino] = nodo_actual
+                lineas[vecino] = linea_actual  # Actualizamos la línea del vecino
                 heapq.heappush(cola_prioridad, (distancia, vecino))
 
     print(f"No hay ruta disponible de {inicio} a {destino}.")
@@ -47,7 +58,7 @@ def encontrar_ruta_optima(grafo, inicio, destino):
 # Normalizar nombres de estaciones
 def normalizar_cadena(cadena):
     equivalencias = {
-        'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ñ': 'n',
+        'á': 'a', 'é': 'e', 'í': 'i', 'ó': 'o', 'ú': 'u', 'ü': 'u', 'ñ': 'n',
         'Á': 'a', 'É': 'e', 'Í': 'i', 'Ó': 'o', 'Ú': 'u', 'Ñ': 'n'
     }
     return ''.join(equivalencias.get(c, c) for c in cadena).lower()
@@ -114,6 +125,19 @@ if transbordos > 0:
 else:
     print(f"Tiempo total: {tiempo_total} minutos.")
 
+# Preguntar al usuario si desea ver el pseudocódigo
+ver_pseudocodigo = input("¿Quieres ver el pseudocódigo de Dijkstra? (sí/no): ").strip().lower()
+
+if ver_pseudocodigo in [ '1', 'sí', 'si', 'yes', 'y', 's']:
+    try:
+        # Abrir y leer el archivo dijkstra.txt
+        with open('dijkstra.txt', 'r', encoding='utf-8') as archivo:
+            pseudocodigo = archivo.read()
+            print("\nPseudocódigo de Dijkstra:\n")
+            print(pseudocodigo)
+    except FileNotFoundError:
+        print("No se encontró el archivo 'dijkstra.txt'.")
+
 # Posiciones de las estaciones
 pos = {
     "Alonso Cano": (765, 510),
@@ -164,6 +188,7 @@ nx.draw(G, pos, with_labels=True, node_color="lightgray", node_size=3500, font_s
 # Resaltar la ruta óptima
 if ruta_optima:
     path_edges = list(zip(ruta_optima, ruta_optima[1:]))
+
     # Dibujar los bordes de la ruta óptima con un color distinto
     nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color="black", width=6)
 
