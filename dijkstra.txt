@@ -1,4 +1,4 @@
-Pseudocodigo del algoritmo Dijkstra:
+Seudocódigo del algoritmo Dijkstra:
 
 Algoritmo Dijkstra(Grafo G, Nodo inicio, Nodo destino):
 1. Inicializar el conjunto de nodos no visitados U con todos los nodos.

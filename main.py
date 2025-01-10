@@ -126,22 +126,22 @@ else:
     print(f"Tiempo total: {tiempo_total} minutos.")
 
 # Preguntar al usuario si desea ver el pseudocódigo
-ver_pseudocodigo = input("¿Quieres ver el pseudocódigo de Dijkstra? (sí/no): ").strip().lower()
+# ver_pseudocodigo = input("¿Quieres ver el pseudocódigo de Dijkstra? (si/no): ")
 
-if ver_pseudocodigo in [ '1', 'sí', 'si', 'yes', 'y', 's']:
-    try:
-        # Abrir y leer el archivo dijkstra.txt
-        with open('dijkstra.txt', 'r', encoding='utf-8') as archivo:
-            pseudocodigo = archivo.read()
-            print("\nPseudocódigo de Dijkstra:\n")
-            print(pseudocodigo)
-    except FileNotFoundError:
-        print("No se encontró el archivo 'dijkstra.txt'.")
+# if ver_pseudocodigo in [ '1', 'sí', 'si', 'yes', 'y', 's']:
+#     try:
+#         # Abrir y leer el archivo dijkstra.txt
+#         with open('dijkstra.txt', 'r', encoding='utf-8') as archivo:
+#             pseudocodigo = archivo.read()
+#             print("\nPseudocódigo de Dijkstra:\n")
+#             print(pseudocodigo)
+#     except FileNotFoundError:
+#         print("No se encontró el archivo 'dijkstra.txt'.")
 
 # Posiciones de las estaciones
 pos = {
     "Alonso Cano": (765, 510),
-    "Alonso Martínez": (735, 585),
+    "Alonso Martínez": (735, 595),
     "Argüelles": (535, 540),
     "Avenida de América": (830, 480),
     "Callao": (670, 660),
@@ -164,7 +164,7 @@ pos = {
 }
 
 line_colors = {
-    "Línea 1": "lightblue",
+    "Línea 1": "turquoise",
     "Línea 2": "red",
     "Línea 3": "yellow",
     "Línea 4": "saddlebrown",
@@ -173,24 +173,39 @@ line_colors = {
     "Línea 7": "orange",
     "Línea 8": "pink",
     "Línea 9": "purple",
-    "Línea 10": "darkblue",
-    "Ramal": "black",
+    "Línea 10": "midnightblue",
+    "Ramal": "steelblue",
 }
 
-# Dibujar el grafo con las posiciones fijas
-edge_colors = [line_colors.get(G[u][v]['line'], 'black') for u, v in G.edges()] 
-plt.figure(figsize=(12, 12))
+ver_grafo = input("¿Quieres ver el grafo con la ruta más corta con el algoritmo de Dijkstra? (si/no): ")
+if ver_grafo in ['1', 'sí', 'si', 'yes', 'y', 's']:
+    # Dibujar el grafo con las posiciones fijas
+    edge_colors = [line_colors.get(G[u][v]['line'], 'black') for u, v in G.edges()]
+    plt.ion()  # Activar modo interactivo
+    fig, ax = plt.subplots(figsize=(12, 12))
+    
+    # Bucle para parpadear las aristas de la ruta óptima
+    for i in range(10):  # Número de parpadeos
+        ax.clear()
 
-# Usar las posiciones fijas para los nodos
-nx.draw(G, pos, with_labels=True, node_color="lightgray", node_size=3500, font_size=10, font_weight="bold", 
-        font_color="black", edge_color=edge_colors, width=3)
+        # Dibujar todo el grafo
+        nx.draw(
+            G, pos, with_labels=True, node_color="lightgray", node_size=2000, font_size=8,
+            font_weight="bold", font_color="black", edge_color=edge_colors, width=3, ax=ax, node_shape='h'
+        )
 
-# Resaltar la ruta óptima
-if ruta_optima:
-    path_edges = list(zip(ruta_optima, ruta_optima[1:]))
+        # Resaltar la ruta óptima
+        if ruta_optima:
+            path_edges = list(zip(ruta_optima, ruta_optima[1:]))
+            
+            # Alternar color para el parpadeo
+            color = "white" if i % 2 == 0 else "black"
+            nx.draw_networkx_edges(
+                G, pos, edgelist=path_edges, edge_color=color, width=6, ax=ax
+            )
 
-    # Dibujar los bordes de la ruta óptima con un color distinto
-    nx.draw_networkx_edges(G, pos, edgelist=path_edges, edge_color="black", width=6)
-
-plt.margins(0.1)
-plt.show()
+        plt.margins(0.1)
+        plt.draw()
+        plt.pause(0.5)  # Pausa para simular el parpadeo
+    plt.ioff()  # Desactivar modo interactivo
+    plt.show()
