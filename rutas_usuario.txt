@@ -1,0 +1,2 @@
+Inicio: Sol, Destino: Moncloa, Transbordos: 0, Tiempo de viaje: 5 minutos
+Inicio: Moncloa, Destino: Sol, Transbordos: 0, Tiempo de viaje: 5 minutos

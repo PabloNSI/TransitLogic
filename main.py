@@ -3,7 +3,7 @@ import networkx as nx
 import heapq
 from estaciones import estaciones, pos
 from conexiones import conexiones
-
+from rutas_usuario import RutasUsuario
 
 G = nx.Graph()
 
@@ -16,6 +16,76 @@ for estacion in estaciones:
 for conexion in conexiones:
     if conexion[2]:  # Solo agregar la conexión si existe (True)
         G.add_edge(conexion[0], conexion[1], line=conexion[3], tiempo=conexion[4])
+
+# Inicializar la clase RutasUsuario para manejar las rutas trazadas por el usuario
+rutas_usuario = RutasUsuario('rutas_usuario.txt')
+
+def mostrar_menu():
+    print("\nOpciones:")
+    print("1. Ver rutas guardadas")
+    print("2. Editar ruta guardada")
+    print("3. Salir")
+
+def ver_rutas_guardadas():
+    rutas = rutas_usuario.ver_rutas()
+    if rutas:
+        print("Rutas guardadas:")
+        for ruta in rutas:
+            print(f"  - {ruta}")
+    else:
+        print("No hay rutas guardadas.")
+
+def editar_ruta_guardada():
+    rutas = rutas_usuario.ver_rutas()
+    if rutas:
+        print("Rutas guardadas:")
+        for i, ruta in enumerate(rutas):
+            print(f"{i + 1}. {ruta}")
+        seleccion = int(input("Selecciona el número de la ruta que deseas editar: ")) - 1
+        if 0 <= seleccion < len(rutas):
+            estacion_origen = input("Introduce la nueva estación de origen: ")
+            estacion_destino = input("Introduce la nueva estación de destino: ")
+            
+            # Normalizar las estaciones
+            origen_normalizado = normalizar_cadena(estacion_origen)
+            destino_normalizado = normalizar_cadena(estacion_destino)
+
+            if origen_normalizado in estaciones_normalizadas and destino_normalizado in estaciones_normalizadas:
+                estacion_origen = estaciones_normalizadas[origen_normalizado]
+                estacion_destino = estaciones_normalizadas[destino_normalizado]
+
+                ruta_optima, rutas_lineas = encontrar_ruta_optima(G, estacion_origen, estacion_destino)
+                if ruta_optima and rutas_lineas:
+                    instrucciones, tiempo_viaje = generar_instrucciones(ruta_optima, rutas_lineas, G)
+                    transbordos = len(set(rutas_lineas)) - 1
+                    rutas_usuario.editar_ruta(seleccion, estacion_origen, estacion_destino, transbordos, tiempo_viaje)
+                    print("Ruta editada y guardada con éxito.")
+                else:
+                    print("No se pudo encontrar una ruta válida.")
+            else:
+                print("Una o ambas estaciones no son válidas. Por favor, inténtelo de nuevo.")
+        else:
+            print("Selección no válida.")
+    else:
+        print("No hay rutas guardadas.")
+
+def eliminar_ruta_guardada():
+    rutas = rutas_usuario.ver_rutas()
+    if rutas:
+        print("Rutas guardadas:")
+        for i, ruta in enumerate(rutas):
+            print(f"{i + 1}. {ruta}")
+        try:
+            seleccion = int(input("Selecciona el número de la ruta que deseas eliminar: ")) - 1
+            if 0 <= seleccion < len(rutas):
+                rutas_usuario.eliminar_ruta(seleccion)
+                print("Ruta eliminada con éxito.")
+            else:
+                print("Selección no válida.")
+        except ValueError:
+            print("Entrada no válida. Por favor, ingresa un número.")
+    else:
+        print("No hay rutas guardadas.")
 
 # Función para encontrar la ruta óptima utilizando Dijkstra, considerando transbordos
 def encontrar_ruta_optima(grafo, inicio, destino):
@@ -100,21 +170,21 @@ def normalizar_cadena(cadena):
 estaciones_normalizadas = {normalizar_cadena(estacion): estacion for estacion in G.nodes}
 
 # Solicitar estación de inicio y destino
-while True:
-    entrada_inicio = input("Ingrese la estación de inicio: ")
-    inicio_normalizado = normalizar_cadena(entrada_inicio)
-    if inicio_normalizado in estaciones_normalizadas:
-        inicio = estaciones_normalizadas[inicio_normalizado]
-        break
+entrada_inicio = input("Ingrese la estación de inicio: ")
+inicio_normalizado = normalizar_cadena(entrada_inicio)
+if inicio_normalizado in estaciones_normalizadas:
+    inicio = estaciones_normalizadas[inicio_normalizado]
+else:
     print("Estación de inicio no válida. Por favor, inténtelo de nuevo.")
+    exit()
 
-while True:
-    entrada_destino = input("Ingrese la estación de destino: ")
-    destino_normalizado = normalizar_cadena(entrada_destino)
-    if destino_normalizado in estaciones_normalizadas:
-        destino = estaciones_normalizadas[destino_normalizado]
-        break
+entrada_destino = input("Ingrese la estación de destino: ")
+destino_normalizado = normalizar_cadena(entrada_destino)
+if destino_normalizado in estaciones_normalizadas:
+    destino = estaciones_normalizadas[destino_normalizado]
+else:
     print("Estación de destino no válida. Por favor, inténtelo de nuevo.")
+    exit()
 
 # Calcular el tiempo total del viaje, incluyendo transbordos
 def calcular_tiempo_total(ruta_optima):
@@ -151,22 +221,14 @@ if ruta_optima and rutas_lineas:
     for instruccion in instrucciones:
         print("  - "+str(instruccion))
     print("\nTiempo total de viaje: "+str(tiempo_viaje)+" minutos.")
+    
+    # Guardar la ruta en el archivo
+    tiempo_total, transbordos, tiempo_transbordos = calcular_tiempo_total(ruta_optima)
+    rutas_usuario.guardar_ruta(inicio, destino, transbordos, tiempo_total)
+
 else:
     print("No se pudo encontrar una ruta válida.")
 
-
-# Preguntar al usuario si desea ver el pseudocódigo
-# ver_pseudocodigo = input("¿Quieres ver el pseudocódigo de Dijkstra? (si/no): ")
-
-# if ver_pseudocodigo in [ '1', 'sí', 'si', 'yes', 'y', 's']:
-#     try:
-#         # Abrir y leer el archivo dijkstra.txt
-#         with open('dijkstra.txt', 'r', encoding='utf-8') as archivo:
-#             pseudocodigo = archivo.read()
-#             print("\nPseudocódigo de Dijkstra:\n")
-#             print(pseudocodigo)
-#     except FileNotFoundError:
-#         print("No se encontró el archivo 'dijkstra.txt'.")
 
 
 line_colors = {
@@ -187,11 +249,11 @@ line_colors = {
 def alternar_color(parpadeo):
     return "white" if parpadeo % 2 == 0 else "black"
 
-# Mostrar el grafo con todos los nodos y aristas, pero etiquetas solo en las estaciones de la ruta óptima
+# Mostrar el grafo
 ver_grafo = input("¿Quieres ver el grafo con la ruta más corta con el algoritmo de Dijkstra? (si/no): ")
 if ver_grafo in ['1', 'sí', 'si', 'yes', 'y', 's']:
     # Preguntar si mostrar todas las etiquetas de nodos o solo las de la ruta óptima
-    mostrar_todas_etiquetas = input("¿Quieres ver todas los nombres de los nodos en el grafo? (si/no): ").lower()
+    mostrar_todas_etiquetas = input("¿Quieres ver todos los nombres de los nodos en el grafo? (si/no): ").lower()
     
     # Dibujar el grafo con las posiciones fijas
     edge_colors = [line_colors.get(G[u][v]['line'], 'black') for u, v in G.edges()]
@@ -199,7 +261,7 @@ if ver_grafo in ['1', 'sí', 'si', 'yes', 'y', 's']:
     fig, ax = plt.subplots(figsize=(12, 12))
     
     # Bucle para parpadear las aristas de la ruta óptima
-    for i in range(10):  # Número de parpadeos
+    for i in range(12):  # Número de parpadeos
         ax.clear()
 
         # Dibujar todo el grafo
@@ -234,3 +296,41 @@ if ver_grafo in ['1', 'sí', 'si', 'yes', 'y', 's']:
         plt.pause(0.5)  # Pausa para simular el parpadeo
     plt.ioff()  # Desactivar modo interactivo
     plt.show()
+
+# Mostrar el menú y gestionar las opciones del usuario
+while True:
+    print("\nOpciones:")
+    print("1. Ver rutas guardadas")
+    print("2. Editar ruta guardada")
+    print("3. Eliminar ruta guardada")
+    print("4. Salir")
+    opcion = input("Selecciona una opción: ")
+
+    if opcion == "1":
+        rutas = rutas_usuario.ver_rutas()
+        if rutas:
+            print("Rutas guardadas:")
+            for i, ruta in enumerate(rutas):
+                print(f"{i + 1}. {ruta}")
+        else:
+            print("No hay rutas guardadas.")
+    elif opcion == "2":
+        editar_ruta_guardada()
+    elif opcion == "3":
+        rutas = rutas_usuario.ver_rutas()
+        if rutas:
+            print("Rutas guardadas:")
+            for i, ruta in enumerate(rutas):
+                print(f"{i + 1}. {ruta}")
+            try:
+                seleccion = int(input("Selecciona el número de la ruta que deseas eliminar: ")) - 1
+                rutas_usuario.eliminar_ruta(seleccion)
+            except ValueError:
+                print("Entrada no válida. Por favor, ingresa un número.")
+        else:
+            print("No hay rutas guardadas.")
+    elif opcion == "4":
+        print("Saliendo del programa.")
+        break
+    else:
+        print("Opción no válida. Por favor, intenta de nuevo.")
