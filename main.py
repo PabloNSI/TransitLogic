@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import networkx as nx
 import heapq
-from estaciones import estaciones
+from estaciones import estaciones, pos
 from conexiones import conexiones
+
 
 G = nx.Graph()
 
@@ -19,28 +20,31 @@ for conexion in conexiones:
 # Función para encontrar la ruta óptima utilizando Dijkstra, considerando transbordos
 def encontrar_ruta_optima(grafo, inicio, destino):
     distancias = {nodo: float('inf') for nodo in grafo}
-    distancias[inicio] = 0
     previos = {nodo: None for nodo in grafo}
-    cola_prioridad = [(0, inicio)]
-    
-    # Usar un diccionario para almacenar la línea de cada nodo visitado
     lineas = {nodo: None for nodo in grafo}
-    
+    distancias[inicio] = 0
+    cola_prioridad = [(0, inicio)]
+
     while cola_prioridad:
         distancia_actual, nodo_actual = heapq.heappop(cola_prioridad)
 
         if nodo_actual == destino:
+            # Construir la ruta y las líneas utilizadas
             ruta = []
-            while nodo_actual is not None:
-                ruta.insert(0, nodo_actual)
+            rutas_lineas = []
+            while nodo_actual:
+                ruta.append(nodo_actual)
+                rutas_lineas.append(lineas[nodo_actual])
                 nodo_actual = previos[nodo_actual]
-            print(f"Ruta óptima de {inicio} a {destino}: {ruta}")
-            return ruta
+            ruta.reverse()
+            rutas_lineas.reverse()
+            return ruta, rutas_lineas
 
         for vecino in grafo[nodo_actual]:
-            peso = grafo[nodo_actual][vecino]["tiempo"]
-            linea_actual = grafo[nodo_actual][vecino]["line"]
-            
+            conexion = grafo[nodo_actual][vecino]
+            peso = conexion['tiempo']
+            linea_actual = conexion['line']
+
             # Si cambiamos de línea, agregar tiempo por transbordo
             if lineas[nodo_actual] and lineas[nodo_actual] != linea_actual:
                 peso += 3  # Tiempo por transbordo
@@ -49,11 +53,40 @@ def encontrar_ruta_optima(grafo, inicio, destino):
             if distancia < distancias[vecino]:
                 distancias[vecino] = distancia
                 previos[vecino] = nodo_actual
-                lineas[vecino] = linea_actual  # Actualizamos la línea del vecino
+                lineas[vecino] = linea_actual
                 heapq.heappush(cola_prioridad, (distancia, vecino))
 
-    print(f"No hay ruta disponible de {inicio} a {destino}.")
-    return None
+    print("No hay ruta disponible de "+str(inicio)+" a "+str(destino))
+    return None, None
+
+def generar_instrucciones(ruta_optima, rutas_lineas, grafo):
+    instrucciones = []
+    tiempo_viaje = 0
+    linea_actual = rutas_lineas[0]  # Primera línea de la ruta
+    segmento_inicio = ruta_optima[0]  # Inicio del segmento actual
+
+    for i in range(1, len(ruta_optima)):
+        estacion_actual = ruta_optima[i - 1]
+        estacion_siguiente = ruta_optima[i]
+        nueva_linea = rutas_lineas[i]
+
+        # Sumar tiempo de viaje
+        tiempo_viaje += grafo[estacion_actual][estacion_siguiente]['tiempo']
+
+        # Detectar cambio de línea o fin de la ruta
+        if nueva_linea != linea_actual:
+            if estacion_actual != segmento_inicio:  # Evitar imprimir si es la misma estación
+                instrucciones.append(
+                    "Toma la línea "+str(linea_actual)+" desde "+str(segmento_inicio)+" hasta "+str(estacion_actual)+"."
+                )
+            segmento_inicio = estacion_actual
+            linea_actual = nueva_linea
+
+    # Añadir la última instrucción para llegar al destino
+    if ruta_optima:
+        instrucciones.append("Toma la línea " + str(linea_actual) + " para llegar a " + str(ruta_optima[-1]))
+
+    return instrucciones, tiempo_viaje
 
 # Normalizar nombres de estaciones
 def normalizar_cadena(cadena):
@@ -107,23 +140,20 @@ def calcular_tiempo_total(ruta_optima):
     return tiempo_viaje, transbordos, tiempo_transbordos
 
 # Mostrar información sobre el viaje
-print(f"El viajero va de {inicio} a {destino}")
-ruta_optima = encontrar_ruta_optima(G, inicio, destino)
+print("El viajero va de "+str(inicio)+" a "+str(destino))
 
-# Si hay ruta, calcular el tiempo total
-if ruta_optima:
-    tiempo_viaje, transbordos, tiempo_transbordos = calcular_tiempo_total(ruta_optima)
-    tiempo_total = tiempo_viaje + tiempo_transbordos
+ruta_optima, rutas_lineas = encontrar_ruta_optima(G, inicio, destino)
 
-print(f"Tiempo total de viaje: {tiempo_viaje} minutos.")
-if transbordos > 0:
-    if transbordos == 1:
-        print(f"Se ha realizado {transbordos} transbordo, añadiendo {tiempo_transbordos} minutos al tiempo total.")
-    else:
-        print(f"Se han realizado {transbordos} transbordos, añadiendo {tiempo_transbordos} minutos al tiempo total.")
-    print(f"Tiempo total (incluyendo transbordos): {tiempo_total} minutos.")
+# Si la ruta es válida, mostrar instrucciones y tiempo de viaje
+if ruta_optima and rutas_lineas:
+    instrucciones, tiempo_viaje = generar_instrucciones(ruta_optima, rutas_lineas, G)
+    print("Instrucciones de viaje:")
+    for instruccion in instrucciones:
+        print("  - "+str(instruccion))
+    print("\nTiempo total de viaje: "+str(tiempo_viaje)+" minutos.")
 else:
-    print(f"Tiempo total: {tiempo_total} minutos.")
+    print("No se pudo encontrar una ruta válida.")
+
 
 # Preguntar al usuario si desea ver el pseudocódigo
 # ver_pseudocodigo = input("¿Quieres ver el pseudocódigo de Dijkstra? (si/no): ")
@@ -138,47 +168,31 @@ else:
 #     except FileNotFoundError:
 #         print("No se encontró el archivo 'dijkstra.txt'.")
 
-# Posiciones de las estaciones
-pos = {
-    "Alonso Cano": (765, 510),
-    "Alonso Martínez": (735, 595),
-    "Argüelles": (535, 540),
-    "Avenida de América": (830, 480),
-    "Callao": (670, 660),
-    "Chamartín": (735, 220),
-    "Colombia": (820, 325),
-    "Cuatro Caminos": (640, 415),
-    "Diego de León": (870, 515),
-    "Goya": (870, 600),
-    "Manuel Becerra": (910, 560),
-    "Moncloa": (500, 518),
-    "Nuevos Ministerios": (735, 460),
-    "Ópera": (640, 715),
-    "Plaza de Castilla": (735, 300),
-    "Plaza de España": (600, 575),
-    "Príncipe Pío": (572, 632),
-    "Sol": (700, 715),
-    "Santiago Bernabéu": (735, 380),
-    "Tribunal": (685, 585),
-    "Velázquez": (830, 600),
-}
 
 line_colors = {
-    "Línea 1": "turquoise",
+    "Línea 1": "#68c4dc",
     "Línea 2": "red",
     "Línea 3": "yellow",
-    "Línea 4": "saddlebrown",
-    "Línea 5": "green",
+    "Línea 4": "#d07404",
+    "Línea 5": "#a0bc14",
     "Línea 6": "gray",
-    "Línea 7": "orange",
-    "Línea 8": "pink",
-    "Línea 9": "purple",
-    "Línea 10": "midnightblue",
+    "Línea 7": "#f89c0c",
+    "Línea 8": "#eba6c9",
+    "Línea 9": "#a02c8c",
+    "Línea 10": "#085cac",
+    "Línea 11": "#08943c",
+    "Línea 12": "#b09c04",
     "Ramal": "steelblue",
 }
+def alternar_color(parpadeo):
+    return "white" if parpadeo % 2 == 0 else "black"
 
+# Mostrar el grafo con todos los nodos y aristas, pero etiquetas solo en las estaciones de la ruta óptima
 ver_grafo = input("¿Quieres ver el grafo con la ruta más corta con el algoritmo de Dijkstra? (si/no): ")
 if ver_grafo in ['1', 'sí', 'si', 'yes', 'y', 's']:
+    # Preguntar si mostrar todas las etiquetas de nodos o solo las de la ruta óptima
+    mostrar_todas_etiquetas = input("¿Quieres ver todas los nombres de los nodos en el grafo? (si/no): ").lower()
+    
     # Dibujar el grafo con las posiciones fijas
     edge_colors = [line_colors.get(G[u][v]['line'], 'black') for u, v in G.edges()]
     plt.ion()  # Activar modo interactivo
@@ -190,21 +204,32 @@ if ver_grafo in ['1', 'sí', 'si', 'yes', 'y', 's']:
 
         # Dibujar todo el grafo
         nx.draw(
-            G, pos, with_labels=True, node_color="lightgray", node_size=2000, font_size=8,
-            font_weight="bold", font_color="black", edge_color=edge_colors, width=3, ax=ax, node_shape='h'
+            G, pos, node_color="lightgray", node_size=200, font_size=6,
+            font_weight="bold", font_color="black", edge_color=edge_colors, width=2
         )
 
         # Resaltar la ruta óptima
         if ruta_optima:
             path_edges = list(zip(ruta_optima, ruta_optima[1:]))
-            
+
             # Alternar color para el parpadeo
-            color = "white" if i % 2 == 0 else "black"
+            color = alternar_color(i)
             nx.draw_networkx_edges(
-                G, pos, edgelist=path_edges, edge_color=color, width=6, ax=ax
+                G, pos, edgelist=path_edges, edge_color=color, width=3, ax=ax
             )
 
-        plt.margins(0.1)
+            # Mostrar solo las etiquetas de los nodos de la ruta óptima
+            if mostrar_todas_etiquetas in ['1', 'sí', 'si', 'yes', 'y', 's']:
+                # Mostrar todas las etiquetas de nodos
+                labels = {nodo: nodo for nodo in G.nodes}
+            else:
+                # Mostrar solo las etiquetas de los nodos de la ruta óptima
+                labels = {nodo: nodo for nodo in ruta_optima}
+            
+            nx.draw_networkx_labels(
+                G, pos, labels=labels, font_size=10, font_weight="bold", font_color="black", ax=ax
+            )
+
         plt.draw()
         plt.pause(0.5)  # Pausa para simular el parpadeo
     plt.ioff()  # Desactivar modo interactivo
